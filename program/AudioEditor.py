@@ -2,6 +2,7 @@ import sys
 
 import librosa as lbs
 import sounddevice as sd
+import soundfile as sf
 import pyqtgraph as pg
 import numpy as np
 import pydub as pd
@@ -390,7 +391,9 @@ class AudioEditor(QMainWindow):
         try:
             if not self.imported:
                 return
-            self.new_audio_name = QFileDialog.getSaveFileName(self, 'Сохранить аудио файл', f'{"/".join(self.audio_name.split("/")[:-1])}', '*.mp3;;*.wav;;*.ogg;;*.flac')[0]
+            self.new_audio_name = QFileDialog.getSaveFileName(self, 'Сохранить аудио файл',
+                                                              f'{"/".join(self.audio_name.split("/")[:-1])}',
+                                                              '*.mp3;;*.wav;;*.ogg;;*.flac')[0]
             print(self.sr_singletone, self.sr)
 
             if (self.format == "*.mp3"):
@@ -668,7 +671,7 @@ class AudioEditor(QMainWindow):
                 self.pitch = 0
                 self.speed = 100
 
-                self.volume_sl.setValue(int(self.get_current_volume()))
+                self.volume_sl.setValue(int(self.get_current_volume(self.audio)))
                 self.pitch_sl.setValue(0)
                 self.speed_sl.setValue(100)
 
@@ -887,7 +890,7 @@ class AudioEditor(QMainWindow):
             audio_pd = before_fade + after_fade
 
             self.audio, self.sr = self.pydub_to_librosa(audio_pd) #конверируем обратно
-            self.change_volume(self.volume_sl.value())
+            self.change_volume(self.audio, self.volume_sl.value())
 
 
             audio_tmp_pd = self.librosa_to_pydub(self.tmp_audio, self.tmp_sr) #конверируем librosa файл в pydub
@@ -1026,7 +1029,7 @@ class AudioEditor(QMainWindow):
                 return
             
             decibels, ok_pressed = QInputDialog.getInt(self, "Изменение громкости",
-                                                       "Введите новое значение громкости(от -60 до 20 дб)", int(self.get_current_volume()), -60, 20)
+                                                       "Введите новое значение громкости(от -60 до 20 дб)", int(self.get_current_volume(self.audio)), -60, 20)
 
             self.loading_image.setHidden(False)
 
