@@ -60,7 +60,7 @@ class AudioEditor(QMainWindow):
         cut = QAction("Вырезка", self.operations_button)
         fade_in = QAction("Возрастание", self.operations_button)
         fade_out = QAction("Затухание", self.operations_button)
-        reverb = QAction("Ревербация", self.operations_button)
+        #reverb = QAction("Ревербация", self.operations_button)
         reverse = QAction("Реверсирование", self.operations_button)
         
         reset.triggered.connect(self.reset)
@@ -68,7 +68,7 @@ class AudioEditor(QMainWindow):
         cut.triggered.connect(self.cut)
         fade_in.triggered.connect(self.fade_in)
         fade_out.triggered.connect(self.fade_out)
-        reverb.triggered.connect(self.reverb)
+        #reverb.triggered.connect(self.reverb)
         reverse.triggered.connect(self.reverse)
 
         operations_menu.addAction(reset)
@@ -76,7 +76,7 @@ class AudioEditor(QMainWindow):
         operations_menu.addAction(cut)
         operations_menu.addAction(fade_in)
         operations_menu.addAction(fade_out)
-        operations_menu.addAction(reverb)
+        #operations_menu.addAction(reverb)
         operations_menu.addAction(reverse)
         
         self.operations_button.setMenu(operations_menu)
@@ -159,7 +159,7 @@ class AudioEditor(QMainWindow):
         self.pitch_sl.sliderReleased.connect(self.pitch_sl_changed)
         
         self.speed_sl = QSlider(Qt.Orientation.Vertical, self)
-        self.speed_sl.setRange(1, 200) #от 1% до 200%
+        self.speed_sl.setRange(50, 200) #от 50% до 200%
         self.speed_sl.setTickInterval(5)
         self.speed_sl.sliderReleased.connect(self.speed_sl_changed)
 
@@ -308,10 +308,13 @@ class AudioEditor(QMainWindow):
             self.audio = self.audio_prev
             self.sr = self.sr_prev
 
+            self.tmp_audio = self.audio_prev
+            self.tmp_sr = self.sr
+
             self.pitch = self.pitch_prev
             self.speed = self.speed_prev
 
-            self.volume_sl.setValue(int(self.get_current_volume()))
+            self.volume_sl.setValue(int(self.get_current_volume(self.audio)))
             self.pitch_sl.setValue(self.pitch_prev)
             self.speed_sl.setValue(self.speed_prev)
 
@@ -353,6 +356,9 @@ class AudioEditor(QMainWindow):
     def importAudioFile(self): #импортируем аудиофайл
         try:
             self.audio_name, self.format = QFileDialog.getOpenFileName(self, 'Выбрать аудио файл', 'C:/', '*.mp3;;*.wav;;*.ogg;;*.flac')
+            if not self.audio_name:
+                return
+            
             print(self.audio_name, self.format)
             
             self.audio, self.sr = lbs.load(self.audio_name, sr=None) #sr - sampling_rate
@@ -361,10 +367,10 @@ class AudioEditor(QMainWindow):
             self.audio_prev = self.audio #делаем бэкап, чтобы можно было откатить действие
             self.sr_prev = self.sr
             
-            self.audio_singletone = self.audio.copy()
+            self.audio_singletone = self.audio
             self.sr_singletone = self.sr
 
-            self.tmp_audio = self.audio.copy()
+            self.tmp_audio = self.audio
             self.tmp_sr = self.sr
 
             self.pitch = 0
@@ -391,12 +397,18 @@ class AudioEditor(QMainWindow):
         try:
             if not self.imported:
                 return
-            self.new_audio_name = QFileDialog.getSaveFileName(self, 'Сохранить аудио файл',
+            self.new_audio_name, new_format = QFileDialog.getSaveFileName(self, 'Сохранить аудио файл',
                                                               f'{"/".join(self.audio_name.split("/")[:-1])}',
-                                                              '*.mp3;;*.wav;;*.ogg;;*.flac')[0]
+                                                              '*.mp3;;*.wav;;*.ogg;;*.flac')
+            if not self.new_audio_name:
+                return
+            print(self.new_audio_name, new_format)
             print(self.sr_singletone, self.sr)
 
-            if (self.format == "*.mp3"):
+            if not self.new_audio_name.endswith(new_format[1:]):
+                self.new_audio_name += new_format[1:]
+
+            if (self.format == "*.mp3" or new_format == "*.mp3"):
                 target_sr = min(self.supported_rates, key=lambda x: abs(x - self.sr))
             
             sf.write(self.new_audio_name, self.audio, target_sr)
@@ -782,53 +794,53 @@ class AudioEditor(QMainWindow):
             print(f"=== cutting failed: {e}")
 
 
-    def reverb(self):
-        try:
-            if not self.imported:
-                return
+    #def reverb(self):
+        #try:
+            #if not self.imported:
+                #return
 
-            delay, ok_pressed = QInputDialog.getDouble(self, "Ревербация",
-                                                               f"Введите длину ревербации(в секундах, от 0 до 2 секунд)",
-                                                               0, 0, 2, 2)
-            if not ok_pressed:
-                return
+            #delay, ok_pressed = QInputDialog.getDouble(self, "Ревербация",
+                                                               #f"Введите длину ревербации(в секундах, от 0 до 2 секунд)",
+                                                               #0.01, 0.01, 2.00, 2)
+            #if not ok_pressed:
+                #return
             
-            decay, ok_pressed = QInputDialog.getDouble(self, "Ревербация",
-                                                                f"Введите значение затухания(от 0.01 до 0.99)",
-                                                                0.01, 0.01, 0.99, 2)
-            if not ok_pressed:
-                return
+            #decay, ok_pressed = QInputDialog.getDouble(self, "Ревербация",
+                                                                #f"Введите значение затухания(от 0.01 до 0.99)",
+                                                                #0.01, 0.01, 0.99, 2)
+            #if not ok_pressed:
+                #return
             
-            self.audio_prev = self.audio
-            self.sr_prev = self.sr
+            #self.audio_prev = self.audio
+            #self.sr_prev = self.sr
 
-            impulse = np.zeros(int(self.sr * delay))
-            impulse[0] = 1.0
+            #impulse = np.zeros(max(1, int(self.sr * delay)))
+            #impulse[0] = 1.0
 
             #for i in range(1, len(impulse)):
                 #impulse[i] = decay * impulse[i - 1]
 
-            self.audio = np.convolve(self.audio, impulse, mode='same')
-            self.audio = lbs.util.normalize(self.audio)
+            #self.audio = np.convolve(self.audio, impulse, mode='same')
+            #self.audio = lbs.util.normalize(self.audio)
             
-            self.change_volume(self.audio, self.volume_sl.value())
+            #self.change_volume(self.audio, self.volume_sl.value())
             
 
-            impulse = np.zeros(int(self.tmp_sr * delay))
-            impulse[0] = 1.0
+            #impulse = np.zeros(int(self.tmp_sr * delay))
+            #impulse[0] = 1.0
 
             #for i in range(1, len(impulse)):
                 #impulse[i] = decay * impulse[i - 1]
 
-            self.tmp_audio = np.convolve(self.tmp_audio, impulse, mode='same')
-            self.tmp_audio = lbs.util.normalize(self.tmp_audio)
+            #self.tmp_audio = np.convolve(self.tmp_audio, impulse, mode='same')
+            #self.tmp_audio = lbs.util.normalize(self.tmp_audio)
             
-            self.change_volume(self.tmp_audio, self.volume_sl.value())
+            #self.change_volume(self.tmp_audio, self.volume_sl.value())
             
-            self.update_plot()
-            print("reverbed")
-        except Exception as e:
-            print(f"=== reverbing failed: {e}")
+            #self.update_plot()
+            #print("reverbed")
+        #except Exception as e:
+            #print(f"=== reverbing failed: {e}")
 
 
     def reverse(self):
@@ -866,12 +878,12 @@ class AudioEditor(QMainWindow):
             
             seconds_first, ok_pressed = QInputDialog.getDouble(self, "Возрастание",
                                                                f"Введите начальную позицию возрастания(в секундах, от 0 до {round(self.get_current_duration(), 2)} секунд)",
-                                                               self.current_position / self.sr, 0, self.get_current_duration(), 2)
+                                                               0, 0, self.get_current_duration(), 2)
             if not ok_pressed:
                 return
             seconds_second, ok_pressed = QInputDialog.getDouble(self, "Возрастание",
                                                                 f"Введите конечную позицию возрастания(в секундах, от {seconds_first} до {round(self.get_current_duration(), 2)} секунд)",
-                                                                seconds_first, seconds_first, self.get_current_duration(), 2)
+                                                                self.current_position / self.sr, seconds_first, self.get_current_duration(), 2)
             if not ok_pressed:
                 return
             
@@ -1150,10 +1162,10 @@ class AudioEditor(QMainWindow):
             
             if self.speed != 100:
                 speed, ok_pressed = QInputDialog.getInt(self, "Изменение скорости",
-                                                        "Введите, во сколько раз измениться значение скорости(в процентах, от 1% до 200%)", self.speed, 1, 200)
+                                                        "Введите, во сколько раз измениться значение скорости(в процентах, от 50% до 200%)", self.speed, 50, 200)
             else:
                 speed, ok_pressed = QInputDialog.getInt(self, "Изменение скорости",
-                                                        "Введите, во сколько раз измениться значение скорости(в процентах, от 1% до 200%)", 100, 1, 200)
+                                                        "Введите, во сколько раз измениться значение скорости(в процентах, от 50% до 200%)", 100, 50, 200)
 
             self.loading_image.setHidden(False)
 
